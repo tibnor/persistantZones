@@ -1,15 +1,14 @@
 from libsoundtouch import discover_devices
 from requests.exceptions import ConnectionError
 import time
+import json
+
+with open("persistant.cfg", 'r') as f:
+    config = json.load(f)
 
 global merged_zones
 merged_zones = False
 
-#Stue - F45EAB309C61
-#KjÃ¸kken - A81B6A1DEC47
-#Bad - A81B6A1E0104
-#Soverom - 68C90BB8AFE0
-zoneMembers = ["F45EAB309C61","A81B6A1DEC47","A81B6A1E0104"]
 
 class deviceExt():
     def __init__(self,device):
@@ -17,7 +16,14 @@ class deviceExt():
         self._wasOn = self.isOn()
         device.add_status_listener(self.status_listener)
         device.start_notification()
-        print("Online: " + device.config.name)
+        if device.config.device_id in config:
+            cfg = config[device.config.device_id]
+            self.turnAllOn = cfg["turnAllOn"]
+            self.remoteTurnOn = cfg["remoteTurnOn"]
+        else:
+            self.turnAllOn = True
+            self.remoteTurnOn = True
+        print("Online: " + device.config.name + " (" + device.config.device_id + ")")
         self.was_responding = self.is_responding()
 
     def update_responding(self):
@@ -64,22 +70,38 @@ class deviceExt():
 
 
     def _power_listener(self,ison):
-        slaves = []
         global merged_zones
-        if(ison and not merged_zones):
-            merged_zones = True
-            for dev in devices:
-                if dev is not self and dev.device.config.device_id in zoneMembers:
-                    slaves.append(dev.device)
+        if(ison and not merged_zones and self.turnAllOn):
+            self._group()
+        elif(ison and merged_zones and self.turnAllOn and not self.remoteTurnOn):
+            self._add_to_group()
+        elif(not ison and merged_zones and self.turnAllOn):
+            self._un_group()
 
-            self.device.create_zone(slaves)
-        elif(not ison and merged_zones):
-            merged_zones = False
-            for dev in devices:
-                zone_status = dev.device.zone_status()
-                if zone_status:
-                    if zone_status.is_master:
-                        dev.device.power_off()
+    def _group(self):
+        global merged_zones
+        merged_zones = True
+        slaves = []
+        for dev in devices:
+            if dev is not self and dev.remoteTurnOn:
+                slaves.append(dev.device)
+        self.device.create_zone(slaves)
+
+    def _add_to_group(self):
+        for dev in devices:
+            zone_status = dev.device.zone_status()
+            if zone_status:
+                if zone_status.is_master:
+                    dev.device.add_zone_slave([self.device])
+
+    def _un_group(self):
+        global merged_zones
+        merged_zones = False
+        for dev in devices:
+            zone_status = dev.device.zone_status()
+            if zone_status:
+                if zone_status.is_master:
+                    dev.device.power_off()
 
 
 
@@ -94,54 +116,3 @@ while True:
     for dev in devices:
         dev.update_responding()
     time.sleep(10)
-#     print("Searching")
-#     new_devices = discover_devices(timeout=10)
-#     #print("End search")
-#
-#     for dExisting in devices[:]:
-#         exists = False
-#         for dev in new_devices:
-#             if dExisting.isEqualDevice(dev):
-#                 exists = True
-#         if not exists:
-#             dExisting.close()
-#             devices.remove(dExisting)
-#
-#
-#
-#     for dev in new_devices:
-#         exists = False
-#         for dExisting in devices:
-#             if dExisting.isEqualDevice(dev):
-#                 exists = True
-#         if not exists:
-#             devices.append(deviceExt(dev))
-#
-#     time.sleep(60)  # Wait for events
-
-# devices = []
-# while True:
-#     print("Searching")
-#     new_devices = discover_devices(timeout=10)
-#     #print("End search")
-#
-#     for dExisting in devices[:]:
-#         exists = False
-#         for dev in new_devices:
-#             if dExisting.isEqualDevice(dev):
-#                 exists = True
-#         if not exists:
-#             dExisting.close()
-#             devices.remove(dExisting)
-#
-#
-#
-#     for dev in new_devices:
-#         exists = False
-#         for dExisting in devices:
-#             if dExisting.isEqualDevice(dev):
-#                 exists = True
-#         if not exists:
-#             devices.append(deviceExt(dev))
-#
-#     time.sleep(60)  # Wait for events
