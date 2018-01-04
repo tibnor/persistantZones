@@ -95,9 +95,10 @@ class deviceExt():
         elif(ison and merged_zones and self.turnAllOn and not self.remoteTurnOn):
             self._add_to_group()
         elif(not ison and merged_zones and self.turnAllOn):
-            self._un_group()
+            self._turnOffAll()
 
     def _group(self):
+        _LOGGER.info("Merge all to a zone")
         global merged_zones
         merged_zones = True
         slaves = []
@@ -107,15 +108,15 @@ class deviceExt():
         self.device.create_zone(slaves)
 
     def _add_to_group(self):
-        _LOGGER.info("Group devices")
+        _LOGGER.info("Add device to zone")
         for dev in devices:
             zone_status = dev.device.zone_status()
             if zone_status:
                 if zone_status.is_master:
                     dev.device.add_zone_slave([self.device])
 
-    def _un_group(self):
-        _LOGGER.info("Ungroup devices")
+    def _turnOffAll(self):
+        _LOGGER.info("Turn off all devices")
         global merged_zones
         merged_zones = False
         for dev in devices:
