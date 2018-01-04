@@ -2,13 +2,26 @@ from libsoundtouch import discover_devices
 from requests.exceptions import ConnectionError
 import time
 import json
+import os
+import sys
+import logging
 
-with open("persistant.cfg", 'r') as f:
+__main_path__ = os.path.dirname(os.path.realpath(sys.argv[0]))
+
+
+with open(__main_path__+"/../persistant.cfg", 'r') as f:
     config = json.load(f)
 
 global merged_zones
 merged_zones = False
 
+_LOGGER = logging.getLogger(__name__)
+_LOGGER.setLevel(logging.INFO)
+fh = logging.FileHandler(__main_path__+"/../persistantGroup.log")
+fh.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+fh.setFormatter(formatter)
+_LOGGER.addHandler(fh)
 
 class deviceExt():
     def __init__(self,device):
@@ -23,17 +36,23 @@ class deviceExt():
         else:
             self.turnAllOn = True
             self.remoteTurnOn = True
-        print("Online: " + device.config.name + " (" + device.config.device_id + ")")
+        _LOGGER.info("Online: " + device.config.name + " (" + device.config.device_id + ")")
         self.was_responding = self.is_responding()
 
     def update_responding(self):
+        if self.was_responding:
+            on_pong_time = self.device.is_pong_on_time()
+            if (not on_pong_time):
+                self.device.stop_notification()
+                _LOGGER.warn(self.device.config.name + " is offline")
+
         responding = self.is_responding()
         if (responding and not self.was_responding):
             self.device.start_notification()
-            print(self.device.config.name + " is online")
+            _LOGGER.warn(self.device.config.name + " is online")
         elif ((not responding) and self.was_responding):
             self.device.stop_notification()
-            print(self.device.config.name + " is offline")
+            _LOGGER.warn(self.device.config.name + " is offline")
         self.was_responding = responding
 
     def is_responding(self):
@@ -54,7 +73,7 @@ class deviceExt():
 
     def close(self):
         self.device.stop_notification()
-        print("Offline: "+ self.device.config.name)
+        _LOGGER.warn("Offline: "+ self.device.config.name)
 
     def isOn(self,status = None):
         if status == None:
@@ -88,6 +107,7 @@ class deviceExt():
         self.device.create_zone(slaves)
 
     def _add_to_group(self):
+        _LOGGER.info("Group devices")
         for dev in devices:
             zone_status = dev.device.zone_status()
             if zone_status:
@@ -95,6 +115,7 @@ class deviceExt():
                     dev.device.add_zone_slave([self.device])
 
     def _un_group(self):
+        _LOGGER.info("Ungroup devices")
         global merged_zones
         merged_zones = False
         for dev in devices:
@@ -105,7 +126,9 @@ class deviceExt():
 
 
 
+_LOGGER.info("Start searching for devices")
 devices = discover_devices(timeout=10)
+_LOGGER.info("End searching for devices, found %d devices" % len(devices))
 devs = []
 for dev in devices:
     devs.append(deviceExt(dev))
