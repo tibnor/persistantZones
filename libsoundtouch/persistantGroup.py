@@ -44,7 +44,8 @@ class deviceExt():
             on_pong_time = self.device.is_pong_on_time()
             if (not on_pong_time):
                 self.device.stop_notification()
-                _LOGGER.warn(self.device.config.name + " is offline")
+                _LOGGER.warn(self.device.config.name + " is offline (lost ping)")
+                self.was_responding = False
 
         responding = self.is_responding()
         if (responding and not self.was_responding):
@@ -52,7 +53,7 @@ class deviceExt():
             _LOGGER.warn(self.device.config.name + " is online")
         elif ((not responding) and self.was_responding):
             self.device.stop_notification()
-            _LOGGER.warn(self.device.config.name + " is offline")
+            _LOGGER.warn(self.device.config.name + " is offline (lost get)")
         self.was_responding = responding
 
     def is_responding(self):
