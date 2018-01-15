@@ -39,6 +39,12 @@ class deviceExt():
         _LOGGER.info("Online: " + device.config.name + " (" + device.config.device_id + ")")
         self.was_responding = self.is_responding()
 
+    def __del__(self):
+        self.stop()
+
+    def stop(self):
+        self.device.stop_notification()
+
     def update_responding(self):
         if self.was_responding:
             on_pong_time = self.device.is_pong_on_time()
@@ -127,17 +133,44 @@ class deviceExt():
                     dev.device.power_off()
 
 
-
-_LOGGER.info("Start searching for devices")
-devices = discover_devices(timeout=10)
-_LOGGER.info("End searching for devices, found %d devices" % len(devices))
-devs = []
-for dev in devices:
-    devs.append(deviceExt(dev))
-devices = devs
-
-notResponding = []
+devices = []
 while True:
+    #    _LOGGER.info("Start searching for devices")
+    new_devices = discover_devices(timeout=10)
+    _LOGGER.info("Found %d devices" % len(new_devices))
+
+    # Check if all devices are still found and not changed IP
+    for old_dev in devices[:]:
+        is_found = False
+        for dev in new_devices:
+            mac_new = dev.config.mac_address
+            mac_old = old_dev.device.config.mac_address
+            if mac_new == mac_old:
+                ip_new = dev.config.device_ip
+                ip_old = old_dev.device.config.device_ip
+                is_found = ip_new == ip_old
+                break
+
+        if not is_found:
+            _LOGGER.info("Did not find %s" % old_dev.device.config.name)
+            old_dev.stop()
+            devices.remove(old_dev)
+
+    # Check if any devices are new
+    for dev in new_devices:
+        is_found = False
+        for old_dev in devices:
+            mac_new = dev.config.mac_address
+            mac_old = old_dev.device.config.mac_address
+            if mac_new == mac_old:
+                is_found = True
+                break
+
+        if not is_found:
+            _LOGGER.info("New device: %s" % dev.config.name)
+            devices.append(deviceExt(dev))
+
+
     for dev in devices:
         dev.update_responding()
-    time.sleep(10)
+    time.sleep(120)
