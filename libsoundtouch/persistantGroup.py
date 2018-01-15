@@ -112,7 +112,8 @@ class deviceExt():
         for dev in devices:
             if dev is not self and dev.remoteTurnOn:
                 slaves.append(dev.device)
-        self.device.create_zone(slaves)
+        if len(slaves)>0:
+            self.device.create_zone(slaves)
 
     def _add_to_group(self):
         _LOGGER.info("Add device to zone")
