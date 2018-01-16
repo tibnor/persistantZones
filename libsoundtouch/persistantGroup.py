@@ -1,5 +1,6 @@
 from libsoundtouch import discover_devices
 from requests.exceptions import ConnectionError
+from urllib3.exceptions import NewConnectionError
 import time
 import json
 import os
@@ -66,7 +67,7 @@ class deviceExt():
         try:
             self.isOn()
             return True
-        except ConnectionError:
+        except (ConnectionError, NewConnectionError):
             return False
 
     def isEqualDevice(self,device):
