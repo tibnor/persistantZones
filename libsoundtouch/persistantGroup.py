@@ -132,8 +132,11 @@ class deviceExt():
             zone_status = dev.device.zone_status()
             if zone_status:
                 if zone_status.is_master:
+                    _LOGGER.info("Turn of master:"+dev.device.config.name)
                     dev.device.power_off()
-
+                    return
+        for dev in devices:
+            dev.device.power_off()
 
 devices = []
 while True:
