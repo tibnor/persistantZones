@@ -16,10 +16,10 @@ __main_path__ = os.path.dirname(os.path.realpath(sys.argv[0]))
 with open(__main_path__ + "/../persistant.cfg", 'r') as f:
     config = json.load(f)
 
+logging.basicConfig(level=logging.ERROR)
 _LOGGER = logging.getLogger(__name__)
-_LOGGER.setLevel(logging.INFO)
 fh = logging.FileHandler(__main_path__ + "/../persistantGroup.log")
-fh.setLevel(logging.DEBUG)
+fh.setLevel(logging.INFO)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 fh.setFormatter(formatter)
 _LOGGER.addHandler(fh)
@@ -89,7 +89,7 @@ class DeviceExtender:
         else:
             self.turnAllOn = True
             self.remoteTurnOn = True
-        _LOGGER.info("Online: " + device.config.name + " (" + device.config.device_id + ")")
+        _LOGGER.info("Online: " + device.config.name + " (" + device.config.device_id + ", "+device.config.device_ip+")")
         self.was_responding = self.is_responding()
 
     def __del__(self):
@@ -144,6 +144,7 @@ class DeviceExtender:
         return status.source != "STANDBY"
 
     def status_listener(self, status):
+        _LOGGER.info("New status: %s" % status)
         is_on = self.is_on(status)
         if is_on != self._wasOn:
             self._wasOn = is_on

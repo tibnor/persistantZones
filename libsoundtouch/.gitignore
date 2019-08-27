@@ -1,0 +1,11 @@
+.idea/
+*.iml
+.coverage
+.tox/
+libsoundtouch.egg-info/
+*.pyc
+build/
+dist/
+.cache/
+runtime/*
+docs/_build
